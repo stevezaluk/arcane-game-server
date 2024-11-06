@@ -60,7 +60,7 @@ func initConfig() {
 		defaultConfigPath := home + ".config/arcane-game-server"
 
 		viper.AddConfigPath(defaultConfigPath)
-		viper.SetConfigName("arcane-game-server.json")
+		viper.SetConfigName("config.json")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
