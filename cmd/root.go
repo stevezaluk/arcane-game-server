@@ -43,6 +43,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.arcane-game-server.yaml)")
+	rootCmd.Flags().BoolP("verbose", "v", false, "Enable additional verbosity in logging")
 }
 
 func initConfig() {
@@ -61,15 +62,6 @@ func initConfig() {
 		viper.AddConfigPath(defaultConfigPath)
 		viper.SetConfigName("config.json")
 	}
-
-	// default config values
-	viper.SetDefault("mongo.ip", "127.0.0.1")
-	viper.SetDefault("mongo.port", 27017)
-	viper.SetDefault("mongo.user", "admin")
-	viper.SetDefault("mongo.pass", "admin")
-
-	viper.SetDefault("port", 8080)
-	viper.SetDefault("verbose", false)
 
 	viper.AutomaticEnv() // read in environment variables that match
 
