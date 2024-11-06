@@ -62,9 +62,20 @@ func initConfig() {
 		viper.SetConfigName("config.json")
 	}
 
+	// default config values
+	viper.SetDefault("mongo.ip", "127.0.0.1")
+	viper.SetDefault("mongo.port", 27017)
+	viper.SetDefault("mongo.user", "admin")
+	viper.SetDefault("mongo.pass", "admin")
+
+	viper.SetDefault("port", 8080)
+	viper.SetDefault("verbose", false)
+
 	viper.AutomaticEnv() // read in environment variables that match
 
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("[info] Using config file:", viper.ConfigFileUsed())
+		if viper.GetBool("verbose") {
+			fmt.Println("[cli - info] Config File:", viper.ConfigFileUsed())
+		}
 	}
 }
