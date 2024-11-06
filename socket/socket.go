@@ -6,11 +6,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ServerSocket struct {
+type Socket struct {
 	Listener *net.Listener
 }
 
-func (socket *ServerSocket) Start() {
+func (socket *Socket) Start() {
 	uri := "localhost:" + viper.GetString("port")
 
 	listen, err := net.Listen("tcp", uri)
@@ -20,4 +20,8 @@ func (socket *ServerSocket) Start() {
 	}
 
 	socket.Listener = &listen
+}
+
+func (socket *Socket) WaitForConnections() {
+
 }
