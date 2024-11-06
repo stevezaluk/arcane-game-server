@@ -43,8 +43,6 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.arcane-game-server.yaml)")
-
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 func initConfig() {
@@ -57,8 +55,9 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		defaultConfigPath := home + ".config/arcane-game-server"
+		defaultConfigPath := home + "/.config/arcane-game-server/"
 
+		viper.SetConfigType("json")
 		viper.AddConfigPath(defaultConfigPath)
 		viper.SetConfigName("config.json")
 	}
@@ -66,6 +65,6 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Println("[info] Using config file:", viper.ConfigFileUsed())
 	}
 }
