@@ -1,10 +1,12 @@
 package server
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"net"
 
 	"github.com/spf13/viper"
+	"github.com/stevezaluk/arcane-game-server/crypto"
 )
 
 type GameServer struct {
@@ -12,9 +14,16 @@ type GameServer struct {
 	ConnectionCount int
 	MaxConnections  int
 	IsClosed        bool
+
+	privateKey rsa.PrivateKey
+	publicKey  rsa.PublicKey
 }
 
 func (server *GameServer) Start() {
+	priv, pub := crypto.GenerateKeyPair()
+	server.privateKey = priv
+	server.publicKey = pub
+
 	uri := "127.0.0.1:" + viper.GetString("port")
 
 	listen, err := net.Listen("tcp", uri)
