@@ -1,4 +1,4 @@
-package socket
+package server
 
 import (
 	"fmt"
@@ -7,14 +7,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Socket struct {
+type GameServer struct {
 	Listener        *net.Listener
 	ConnectionCount int
 	MaxConnections  int
 	IsClosed        bool
 }
 
-func (socket *Socket) Start() {
+func (server *GameServer) Start() {
 	uri := "127.0.0.1:" + viper.GetString("port")
 
 	listen, err := net.Listen("tcp", uri)
@@ -23,30 +23,30 @@ func (socket *Socket) Start() {
 		panic(err) // panicing here as this is a fatal error
 	}
 
-	socket.Listener = &listen
+	server.Listener = &listen
 }
 
-func (socket *Socket) AcceptConnections() {
+func (server *GameServer) AcceptConnections() {
 	for {
-		if socket.ConnectionCount == socket.MaxConnections {
-			socket.IsClosed = true
+		if server.ConnectionCount == server.MaxConnections {
+			server.IsClosed = true
 			break
 		}
 
-		if !socket.IsClosed {
-			sock := *socket.Listener
+		if !server.IsClosed {
+			sock := *server.Listener
 			conn, err := sock.Accept()
 			if err != nil {
 				// log here
 			}
 
-			socket.ConnectionCount += 1
-			go socket.HandleClient(conn)
+			server.ConnectionCount += 1
+			go server.HandleClient(conn)
 		}
 	}
 }
 
-func (socket *Socket) HandleClient(conn net.Conn) {
+func (server *GameServer) HandleClient(conn net.Conn) {
 	for {
 		buffer := make([]byte, 4096)
 		_, err := conn.Read(buffer)
@@ -61,7 +61,7 @@ func (socket *Socket) HandleClient(conn net.Conn) {
 	}
 }
 
-func (socket *Socket) Stop() {
-	sock := *socket.Listener
+func (server *GameServer) Stop() {
+	sock := *server.Listener
 	sock.Close()
 }

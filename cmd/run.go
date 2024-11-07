@@ -20,10 +20,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stevezaluk/arcane-game-server/socket"
+	"github.com/stevezaluk/arcane-game-server/server"
 )
 
-var sock socket.Socket
+var serv server.GameServer
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -31,14 +31,14 @@ var runCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Starting game server...")
-		sock.MaxConnections = 8
+		serv.MaxConnections = 8
 
-		sock.Start()
-		sock.AcceptConnections()
+		serv.Start()
+		serv.AcceptConnections()
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Stopping game server...")
-		sock.Stop()
+		serv.Stop()
 	},
 }
 
