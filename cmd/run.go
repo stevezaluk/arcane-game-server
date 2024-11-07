@@ -20,14 +20,25 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stevezaluk/arcane-game-server/socket"
 )
+
+var sock socket.Socket
 
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start the Game server",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(viper.GetInt("port"))
+		fmt.Println("[server - info] Starting game server...")
+		sock.MaxConnections = 8
+
+		sock.Start()
+		sock.AcceptConnections()
+	},
+	PostRun: func(cmd *cobra.Command, args []string) {
+		fmt.Println("[server - info] Stopping game server...")
+		sock.Stop()
 	},
 }
 
