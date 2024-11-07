@@ -2,8 +2,8 @@ package server
 
 import (
 	"crypto/rsa"
-	"fmt"
 	"net"
+	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
@@ -50,7 +50,7 @@ func (server *GameServer) AcceptConnections() {
 			}
 
 			server.ConnectionCount += 1
-			go server.HandleClient(conn)
+			go server.NegotiateKeys(conn)
 		}
 	}
 }
@@ -64,10 +64,34 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 			// better error checking here
 			continue
 		}
-
-		fmt.Println("client msg: ", string(buffer))
-
 	}
+}
+
+func (server *GameServer) NegotiateKeys(conn net.Conn) {
+	negotiationSuccess := false
+
+	buffer := make([]byte, 4096)
+	_, err := conn.Read(buffer)
+	if err != nil {
+		panic(err) // transmission error during key negotation
+	}
+
+	bufferStr := string(buffer)
+	if strings.HasPrefix(bufferStr, "JOIN:") {
+		keyResp := "PUBKEY:" + string(crypto.PublicKeyToPEM(server.publicKey))
+		_, err := conn.Write([]byte(keyResp))
+		if err != nil {
+			panic(err) // transmission error during key negotiation
+		}
+		negotiationSuccess = true
+	}
+
+	if negotiationSuccess {
+		server.HandleClient(conn)
+	} else {
+		conn.Close()
+	}
+
 }
 
 func (server *GameServer) Stop() {
