@@ -31,10 +31,7 @@ var runCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Starting game server...")
-		serv.MaxConnections = 8
-
 		serv.Start()
-		serv.AcceptConnections()
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Stopping game server...")

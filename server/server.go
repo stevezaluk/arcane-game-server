@@ -13,6 +13,7 @@ import (
 )
 
 type GameServer struct {
+	URI             string
 	Listener        *net.Listener
 	ConnectionCount int
 	MaxConnections  int
@@ -22,14 +23,19 @@ type GameServer struct {
 	publicKey  rsa.PublicKey
 }
 
-func (server *GameServer) Start() {
+func (server *GameServer) Init() {
+	// init logger here
+
 	priv, _ := crypto.GenerateKeyPair()
 	server.privateKey = &priv
 	server.publicKey = server.privateKey.PublicKey
 
-	uri := "127.0.0.1:" + viper.GetString("port")
+	server.URI = "127.0.0.1:" + viper.GetString("port")
+	server.MaxConnections = 8
+}
 
-	listen, err := net.Listen("tcp", uri)
+func (server *GameServer) Listen() {
+	listen, err := net.Listen("tcp", server.URI)
 	if err != nil {
 		// log here
 		panic(err) // panicing here as this is a fatal error
@@ -108,6 +114,12 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) {
 		conn.Close()
 	}
 
+}
+
+func (server *GameServer) Start() {
+	server.Init()
+	server.Listen()
+	server.AcceptConnections()
 }
 
 func (server *GameServer) Stop() {
