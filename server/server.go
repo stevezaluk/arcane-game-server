@@ -1,7 +1,10 @@
 package server
 
 import (
+	std_crypto "crypto"
 	"crypto/rsa"
+	"encoding/base64"
+	"fmt"
 	"net"
 	"strings"
 
@@ -15,14 +18,14 @@ type GameServer struct {
 	MaxConnections  int
 	IsClosed        bool
 
-	privateKey rsa.PrivateKey
+	privateKey *rsa.PrivateKey
 	publicKey  rsa.PublicKey
 }
 
 func (server *GameServer) Start() {
-	priv, pub := crypto.GenerateKeyPair()
-	server.privateKey = priv
-	server.publicKey = pub
+	priv, _ := crypto.GenerateKeyPair()
+	server.privateKey = &priv
+	server.publicKey = server.privateKey.PublicKey
 
 	uri := "127.0.0.1:" + viper.GetString("port")
 
@@ -57,13 +60,26 @@ func (server *GameServer) AcceptConnections() {
 
 func (server *GameServer) HandleClient(conn net.Conn) {
 	for {
-		buffer := make([]byte, 4096)
-		_, err := conn.Read(buffer)
+		buffer := make([]byte, 6000)
+		n, err := conn.Read(buffer)
 		if err != nil {
 			// log here
 			// better error checking here
 			continue
 		}
+
+		fmt.Println("from client:", string(buffer))
+		cipherText, err := base64.StdEncoding.WithPadding(base64.StdPadding).DecodeString(string(buffer[:n]))
+		if err != nil {
+			panic(err)
+		}
+
+		plainText, err := server.privateKey.Decrypt(nil, cipherText, &rsa.OAEPOptions{Hash: std_crypto.SHA256})
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(string(plainText))
 	}
 }
 
