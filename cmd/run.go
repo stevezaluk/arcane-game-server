@@ -31,10 +31,7 @@ var runCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Starting game server...")
-		serv.MaxConnections = 8
-
 		serv.Start()
-		serv.AcceptConnections()
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Stopping game server...")
@@ -59,4 +56,7 @@ func init() {
 
 	runCmd.Flags().String("mongo.pass", "admin", "Set the password to use for authentication with MongoDB")
 	viper.BindPFlag("mongo.pass", runCmd.Flags().Lookup("mongo.pass"))
+
+	runCmd.Flags().String("log.path", "/var/log/arcane", "Set the directory where log files are saved")
+	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log.path"))
 }
