@@ -1,9 +1,7 @@
 package server
 
 import (
-	std_crypto "crypto"
 	"crypto/rsa"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net"
@@ -52,7 +50,6 @@ func (server *GameServer) initCrypto() {
 	priv := crypto.GenerateKeyPair()
 	server.privateKey = &priv
 	server.publicKey = server.privateKey.PublicKey
-
 }
 
 func (server *GameServer) Init() {
@@ -107,17 +104,11 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 			continue
 		}
 
-		cipherText, err := base64.StdEncoding.WithPadding(base64.StdPadding).DecodeString(string(buffer[:n]))
-		if err != nil {
-			panic(err)
+		plainText := crypto.DecryptMessage(string(buffer[:n]), server.privateKey)
+		if plainText == "" {
+			conn.Close()
 		}
-
-		plainText, err := server.privateKey.Decrypt(nil, cipherText, &rsa.OAEPOptions{Hash: std_crypto.SHA256})
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println(string(plainText))
+		fmt.Println(plainText)
 	}
 }
 
