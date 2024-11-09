@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/samber/slog-multi"
@@ -90,13 +89,14 @@ func (server *GameServer) AcceptConnections() {
 
 			slog.Info("Accepted connection from client", "client", conn.RemoteAddr().String())
 			server.ConnectionCount += 1
-			go server.NegotiateKeys(conn)
+			go server.HandleClient(conn)
 		}
 	}
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
-	slog.Info("Waiting for messages from client", "client", conn.RemoteAddr().String())
+	server.NegotiateKeys(conn)
+	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
 	for {
 		buffer := make([]byte, 6000)
 		n, err := conn.Read(buffer)
@@ -113,36 +113,37 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 }
 
 func (server *GameServer) NegotiateKeys(conn net.Conn) {
-	negotiationSuccess := false
-
 	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
+
 	buffer := make([]byte, 4096)
-	_, err := conn.Read(buffer)
-	if err != nil {
+	n, rErr := conn.Read(buffer)
+	if rErr != nil {
 		slog.Error("Failed to read buffer from client during key negotiation", "client", conn.RemoteAddr().String())
 		conn.Close()
 		return
 	}
 
-	bufferStr := string(buffer)
-	if strings.HasPrefix(bufferStr, "JOIN:") {
-		slog.Info("Received JOIN request from client", "client", conn.RemoteAddr().String())
-		keyResp := "PUBKEY:" + string(crypto.PublicKeyToPEM(server.publicKey))
-		_, err := conn.Write([]byte(keyResp))
-		if err != nil {
-			slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
-			conn.Close()
-			return
-		}
-		negotiationSuccess = true
+	bufferStr := string(buffer[:n])
+	slog.Info("Request from client: ", "buf", bufferStr)
+	if bufferStr != "CONNECT" {
+		slog.Error("CONNECT Request not formatted properly. Closing connection", "client", conn.RemoteAddr().String())
+		conn.Close()
+		return
 	}
 
-	if negotiationSuccess {
-		slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
-		server.HandleClient(conn)
-	} else {
+	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
+
+	pemEncodedKey := crypto.PublicKeyToPEM(server.publicKey)
+	keyResp := "PUBKEY:" + string(pemEncodedKey)
+
+	slog.Info("Sending public key...")
+	_, wErr := conn.Write([]byte(keyResp))
+	if wErr != nil {
+		slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
 		conn.Close()
+		return
 	}
+	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 
 }
 
