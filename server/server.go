@@ -51,7 +51,7 @@ func (server *GameServer) Init() {
 	server.initLogger()
 
 	slog.Info("Generating RSA-4096 key pair...")
-	priv, _ := crypto.GenerateKeyPair()
+	priv := crypto.GenerateKeyPair()
 	server.privateKey = &priv
 	server.publicKey = server.privateKey.PublicKey
 

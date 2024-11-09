@@ -7,15 +7,13 @@ import (
 	"encoding/pem"
 )
 
-func GenerateKeyPair() (rsa.PrivateKey, rsa.PublicKey) {
+func GenerateKeyPair() rsa.PrivateKey {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		panic(err) // panicing here as this is a fatal error
 	}
 
-	publicKey := privateKey.PublicKey
-
-	return *privateKey, publicKey
+	return *privateKey
 }
 
 func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
