@@ -47,13 +47,17 @@ func (server *GameServer) initLogger() {
 	slog.SetDefault(server.Logger)
 }
 
-func (server *GameServer) Init() {
-	server.initLogger()
-
+func (server *GameServer) initCrypto() {
 	slog.Info("Generating RSA-4096 key pair...")
 	priv := crypto.GenerateKeyPair()
 	server.privateKey = &priv
 	server.publicKey = server.privateKey.PublicKey
+
+}
+
+func (server *GameServer) Init() {
+	server.initLogger()
+	server.initCrypto()
 
 	server.URI = "127.0.0.1:" + viper.GetString("port")
 	server.MaxConnections = 8
