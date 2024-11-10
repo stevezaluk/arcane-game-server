@@ -96,20 +96,24 @@ func (server *GameServer) AcceptConnections() {
 
 func (server *GameServer) Read(conn net.Conn) (bool, string) {
 	var ret string
-	var result bool
+	var status bool
 
 	buffer := make([]byte, 4096)
 	n, err := conn.Read(buffer)
 	if err != nil {
 		slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
-		return result, ret
+		return status, ret
 	}
 
 	ret = string(buffer[:n])
 
 	slog.Debug("Message from client", "msg", ret)
-	result = true
-	return result, ret
+	status = true
+	return status, ret
+}
+
+func (server *Server) ReadEncrypted(conn net.Conn) (bool, string) {
+
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
