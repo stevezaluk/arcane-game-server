@@ -131,6 +131,18 @@ func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
 	return plainText, nil
 }
 
+func (server *GameServer) Write(message string, conn net.Conn) error {
+	buffer := []byte(message)
+
+	_, err := conn.Write(buffer)
+	if err != nil {
+		slog.Error("Failed to write buffer to client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		return err
+	}
+
+	return nil
+}
+
 func (server *GameServer) HandleClient(conn net.Conn) {
 	if !server.NegotiateKeys(conn) {
 		slog.Error("Key negotiation failed for client. Closing connection...")
@@ -171,7 +183,7 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 	keyResp := "PUBKEY:" + string(pemEncodedKey)
 
 	slog.Info("Sending public key...")
-	_, wErr := conn.Write([]byte(keyResp))
+	wErr := server.Write(keyResp, conn)
 	if wErr != nil {
 		slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
 		return result
