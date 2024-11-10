@@ -30,7 +30,7 @@ func (server *GameServer) initLogger() {
 	timestamp := time.Now().Format(time.RFC3339Nano)
 
 	filename := viper.GetString("log.path") + "/arcane-" + timestamp + ".json"
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644) // this is not getting closed when the server stops
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,13 @@ func (server *GameServer) AcceptConnections() {
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
-	server.NegotiateKeys(conn)
+	if !server.NegotiateKeys(conn) {
+		slog.Error("Key negotiation failed for client. Closing connection...")
+		conn.Close()
+		return
+	}
+
+	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
 	for {
 		buffer := make([]byte, 6000)
@@ -112,23 +118,23 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	}
 }
 
-func (server *GameServer) NegotiateKeys(conn net.Conn) {
+func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
+
+	var result bool
 
 	buffer := make([]byte, 4096)
 	n, rErr := conn.Read(buffer)
 	if rErr != nil {
 		slog.Error("Failed to read buffer from client during key negotiation", "client", conn.RemoteAddr().String())
-		conn.Close()
-		return
+		return result
 	}
 
 	bufferStr := string(buffer[:n])
 	slog.Info("Request from client: ", "buf", bufferStr)
 	if bufferStr != "CONNECT" {
 		slog.Error("CONNECT Request not formatted properly. Closing connection", "client", conn.RemoteAddr().String())
-		conn.Close()
-		return
+		return result
 	}
 
 	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
@@ -140,11 +146,11 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) {
 	_, wErr := conn.Write([]byte(keyResp))
 	if wErr != nil {
 		slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
-		conn.Close()
-		return
+		return result
 	}
-	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 
+	result = true
+	return result
 }
 
 func (server *GameServer) Start() {
