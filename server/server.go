@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
@@ -100,7 +101,9 @@ func (server *GameServer) Read(conn net.Conn) (string, error) {
 	buffer := make([]byte, 4096)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		if err != io.EOF {
+			slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		}
 		return ret, err
 	}
 
@@ -124,15 +127,19 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
 	for {
-		buffer := make([]byte, 6000)
-		n, err := conn.Read(buffer)
+		cipherText, err := server.Read(conn)
 		if err != nil {
-			continue
+			if err == io.EOF {
+				slog.Info("Client has disconnected", "client", conn.RemoteAddr().String())
+			}
+			conn.Close()
+			break
 		}
 
-		plainText := crypto.DecryptMessage(string(buffer[:n]), server.privateKey)
+		plainText := crypto.DecryptMessage(cipherText, server.privateKey)
 		if plainText == "" {
 			conn.Close()
+			break
 		}
 		fmt.Println(plainText)
 	}
