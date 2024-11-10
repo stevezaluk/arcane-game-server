@@ -94,6 +94,24 @@ func (server *GameServer) AcceptConnections() {
 	}
 }
 
+func (server *GameServer) Read(conn net.Conn) (bool, string) {
+	var ret string
+	var result bool
+
+	buffer := make([]byte, 4096)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		return result, ret
+	}
+
+	ret = string(buffer[:n])
+
+	slog.Debug("Message from client", "msg", ret)
+	result = true
+	return result, ret
+}
+
 func (server *GameServer) HandleClient(conn net.Conn) {
 	if !server.NegotiateKeys(conn) {
 		slog.Error("Key negotiation failed for client. Closing connection...")
@@ -123,16 +141,12 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 
 	var result bool
 
-	buffer := make([]byte, 4096)
-	n, rErr := conn.Read(buffer)
-	if rErr != nil {
-		slog.Error("Failed to read buffer from client during key negotiation", "client", conn.RemoteAddr().String())
+	status, buffer := server.Read(conn)
+	if !status {
 		return result
 	}
 
-	bufferStr := string(buffer[:n])
-	slog.Info("Request from client: ", "buf", bufferStr)
-	if bufferStr != "CONNECT" {
+	if buffer != "CONNECT" {
 		slog.Error("CONNECT Request not formatted properly. Closing connection", "client", conn.RemoteAddr().String())
 		return result
 	}
