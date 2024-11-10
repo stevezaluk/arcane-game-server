@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -101,7 +102,9 @@ func (server *GameServer) Read(conn net.Conn) (string, error) {
 	buffer := make([]byte, 4096)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		if err != io.EOF {
+		if err == io.EOF {
+			slog.Info("Client has disconnected", "client", conn.RemoteAddr().String())
+		} else {
 			slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
 		}
 		return ret, err
@@ -114,7 +117,18 @@ func (server *GameServer) Read(conn net.Conn) (string, error) {
 }
 
 func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
-	return "", nil
+
+	cipherText, err := server.Read(conn)
+	if err != nil {
+		return "", err
+	}
+
+	plainText := crypto.DecryptMessage(cipherText, server.privateKey)
+	if plainText == "" {
+		return "", errors.New("decryption: Failed to decrypt cipher text")
+	}
+
+	return plainText, nil
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
@@ -127,17 +141,8 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
 	for {
-		cipherText, err := server.Read(conn)
+		plainText, err := server.ReadEncrypted(conn)
 		if err != nil {
-			if err == io.EOF {
-				slog.Info("Client has disconnected", "client", conn.RemoteAddr().String())
-			}
-			conn.Close()
-			break
-		}
-
-		plainText := crypto.DecryptMessage(cipherText, server.privateKey)
-		if plainText == "" {
 			conn.Close()
 			break
 		}
