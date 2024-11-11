@@ -12,6 +12,7 @@ import (
 	"github.com/samber/slog-multi"
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
+	"github.com/stevezaluk/arcane-game-server/errors"
 	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
 )
 
@@ -195,7 +196,18 @@ func (server *GameServer) Write(message string, conn net.Conn) error {
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
-	if !server.NegotiateKeys(conn) {
+	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
+
+	err := server.NegotiateKeys(conn)
+	if err != nil {
+		if err == errors.ErrReadBufferFailed {
+			slog.Error("Failed to read buffer while waiting for connect response")
+		} else if err == errors.ErrWriteBufferFailed {
+			slog.Error("Failed to write public key to client")
+		} else if err == errors.ErrInvalidConnectResponse {
+			slog.Error("CONNECT Request not formatted properly", "client", conn.RemoteAddr().String())
+		}
+
 		slog.Error("Key negotiation failed for client. Closing connection...")
 		server.CloseConnection(conn)
 		return
@@ -213,19 +225,14 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	}
 }
 
-func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
-	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
-
-	var result bool
-
+func (server *GameServer) NegotiateKeys(conn net.Conn) error {
 	buffer, err := server.Read(conn)
 	if err != nil {
-		return result
+		return errors.ErrReadBufferFailed
 	}
 
 	if buffer != "CONNECT" {
-		slog.Error("CONNECT Request not formatted properly. Closing connection", "client", conn.RemoteAddr().String())
-		return result
+		return errors.ErrInvalidConnectResponse
 	}
 
 	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
@@ -236,11 +243,10 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 	slog.Info("Sending public key...")
 	wErr := server.Write(keyResp, conn)
 	if wErr != nil {
-		return result
+		return errors.ErrWriteBufferFailed
 	}
 
-	result = true
-	return result
+	return nil
 }
 
 func (server *GameServer) Start() {
