@@ -2,6 +2,9 @@ package errors
 
 import "errors"
 
+// Logging Errors
+var ErrLogFileFailed = errors.New("log: Failed to open log file")
+
 // Server Errors
 var ErrServerStartFailed = errors.New("server: Failed to start listening for connections")
 var ErrReadBufferFailed = errors.New("server: Failed to read buffer from client")
