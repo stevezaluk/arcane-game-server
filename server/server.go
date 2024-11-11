@@ -89,16 +89,17 @@ func (server *GameServer) Init() bool {
 	return status
 }
 
-func (server *GameServer) Listen() {
+func (server *GameServer) Listen() error {
 	slog.Info("Starting server...")
 	listen, err := net.Listen("tcp", server.URI)
 	if err != nil {
-		slog.Error("Failed to start listening for connections", "err", err.Error())
-		panic(err) // panicing here as this is a fatal error
+		return arcaneErrors.ErrServerStartFailed
 	}
 
 	slog.Info("Server listening for connections at", "uri", server.URI)
 	server.Listener = &listen
+
+	return nil
 }
 
 func (server *GameServer) AcceptConnections() {
@@ -110,18 +111,29 @@ func (server *GameServer) AcceptConnections() {
 		}
 
 		if !server.IsClosed {
-			sock := *server.Listener
-			conn, err := sock.Accept()
+			conn, err := server.AcceptConnection()
 			if err != nil {
-				slog.Error("Failed to accept connection from client ", "client", conn.RemoteAddr().String(), "err", err.Error())
-				panic(err)
+				continue
 			}
 
-			slog.Info("Accepted connection from client", "client", conn.RemoteAddr().String())
-			server.ConnectionCount += 1
 			go server.HandleClient(conn)
 		}
 	}
+}
+
+func (server *GameServer) AcceptConnection() (net.Conn, error) {
+	sock := *server.Listener
+
+	conn, err := sock.Accept()
+	if err != nil {
+		slog.Error("Failed to accept client connection", "client", conn.RemoteAddr().String())
+		conn.Close()
+		return nil, arcaneErrors.ErrAcceptConnectionFailed
+	}
+
+	slog.Info("Client has connected", "client", conn.RemoteAddr().String())
+	server.ConnectionCount += 1
+	return conn, nil
 }
 
 func (server *GameServer) CloseConnection(conn net.Conn) {
@@ -234,10 +246,16 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 func (server *GameServer) Start() {
 	initErr := server.Init()
 	if !initErr {
+		slog.Error("Server initialization has failed")
 		panic(initErr)
 	}
 
-	server.Listen()
+	listenErr := server.Listen()
+	if listenErr != nil {
+		slog.Error("Failed to start listening for connections", "err", listenErr.Error())
+		panic(listenErr)
+	}
+
 	server.AcceptConnections()
 }
 
