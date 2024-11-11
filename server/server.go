@@ -102,7 +102,7 @@ func (server *GameServer) Listen() error {
 	return nil
 }
 
-func (server *GameServer) AcceptConnections() {
+func (server *GameServer) WaitForConnections() {
 	for {
 		if server.ConnectionCount == server.MaxConnections {
 			server.IsClosed = true
@@ -256,7 +256,7 @@ func (server *GameServer) Start() {
 		panic(listenErr)
 	}
 
-	server.AcceptConnections()
+	server.WaitForConnections()
 }
 
 func (server *GameServer) Stop() {
