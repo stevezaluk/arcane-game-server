@@ -14,6 +14,8 @@ var ErrMaxConnectionsReached = errors.New("server: Cannot accept client connecti
 var ErrInvalidConnectResponse = errors.New("keyNeogtiation: Did not receive expected CONNECT request from client during key negotiation")
 
 // Decryption
+var ErrKeyGenerationFailed = errors.New("crypto: Failed to generate keys for the server")
+var ErrServerClientKeyMismatch = errors.New("crypto: Client key is different than server keys")
 var ErrKeysNotValid = errors.New("crypto: The keys generated for the server are not valid")
 var ErrBase64DecodeFailed = errors.New("crypto: Failed to base64 decode encrypted message sent from client")
 var ErrDecryptionFailed = errors.New("crypto: Failed to decrypt message from client")
