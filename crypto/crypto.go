@@ -8,15 +8,22 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"log/slog"
+
+	"github.com/stevezaluk/arcane-game-server/errors"
 )
 
-func GenerateKeyPair() rsa.PrivateKey {
+func GenerateKeyPair() (rsa.PrivateKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		panic(err) // panicing here as this is a fatal error
+		return *privateKey, errors.ErrKeyGenerationFailed
 	}
 
-	return *privateKey
+	err = privateKey.Validate()
+	if err != nil {
+		return *privateKey, errors.ErrKeysNotValid
+	}
+
+	return *privateKey, nil
 }
 
 func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
