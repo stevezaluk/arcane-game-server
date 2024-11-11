@@ -224,7 +224,6 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 	slog.Info("Sending public key...")
 	wErr := server.Write(keyResp, conn)
 	if wErr != nil {
-		slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
 		return result
 	}
 
