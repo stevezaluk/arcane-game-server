@@ -13,6 +13,7 @@ import (
 	"github.com/samber/slog-multi"
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
+	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
 )
 
 type GameServer struct {
@@ -28,13 +29,13 @@ type GameServer struct {
 	Logger *slog.Logger
 }
 
-func (server *GameServer) initLogger() {
+func (server *GameServer) initLogger() error {
 	timestamp := time.Now().Format(time.RFC3339Nano)
 
 	filename := viper.GetString("log.path") + "/arcane-" + timestamp + ".json"
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644) // this is not getting closed when the server stops
 	if err != nil {
-		panic(err)
+		return arcaneErrors.ErrLogFileFailed
 	}
 
 	multiHandler := slogmulti.Fanout(
@@ -44,21 +45,49 @@ func (server *GameServer) initLogger() {
 
 	server.Logger = slog.New(multiHandler)
 	slog.SetDefault(server.Logger)
+
+	return nil
 }
 
-func (server *GameServer) initCrypto() {
+func (server *GameServer) initCrypto() error {
 	slog.Info("Generating RSA-4096 key pair...")
-	priv := crypto.GenerateKeyPair()
+	priv, err := crypto.GenerateKeyPair()
+	if err != nil {
+		return err
+	}
+
 	server.privateKey = &priv
 	server.publicKey = server.privateKey.PublicKey
+
+	return nil
 }
 
-func (server *GameServer) Init() {
-	server.initLogger()
-	server.initCrypto()
+func (server *GameServer) Init() bool {
+	var status bool
+
+	logErr := server.initLogger()
+	if logErr != nil {
+		slog.Error("Failed to open log file for saving")
+		return status
+	}
+
+	cryptoErr := server.initCrypto()
+	if cryptoErr != nil {
+
+		if cryptoErr == arcaneErrors.ErrKeyGenerationFailed {
+			slog.Error("Failed to generate RSA keys for server")
+		} else if cryptoErr == arcaneErrors.ErrKeysNotValid {
+			slog.Error("Failed to validate the generated keys for the server")
+		}
+
+		return status
+	}
 
 	server.URI = "127.0.0.1:" + viper.GetString("port")
 	server.MaxConnections = 8
+
+	status = true
+	return status
 }
 
 func (server *GameServer) Listen() {
@@ -199,7 +228,11 @@ func (server *GameServer) NegotiateKeys(conn net.Conn) bool {
 }
 
 func (server *GameServer) Start() {
-	server.Init()
+	initErr := server.Init()
+	if !initErr {
+		panic(initErr)
+	}
+
 	server.Listen()
 	server.AcceptConnections()
 }
