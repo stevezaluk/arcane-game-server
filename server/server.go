@@ -96,6 +96,11 @@ func (server *GameServer) AcceptConnections() {
 	}
 }
 
+func (server *GameServer) CloseConnection(conn net.Conn) {
+	conn.Close()
+	server.ConnectionCount -= 1
+}
+
 func (server *GameServer) Read(conn net.Conn) (string, error) {
 	var ret string
 
@@ -146,7 +151,7 @@ func (server *GameServer) Write(message string, conn net.Conn) error {
 func (server *GameServer) HandleClient(conn net.Conn) {
 	if !server.NegotiateKeys(conn) {
 		slog.Error("Key negotiation failed for client. Closing connection...")
-		conn.Close()
+		server.CloseConnection(conn)
 		return
 	}
 
@@ -155,7 +160,7 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	for {
 		plainText, err := server.ReadEncrypted(conn)
 		if err != nil {
-			conn.Close()
+			server.CloseConnection(conn)
 			break
 		}
 		fmt.Println(plainText)
