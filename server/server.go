@@ -2,7 +2,6 @@ package server
 
 import (
 	"crypto/rsa"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -137,7 +136,7 @@ func (server *GameServer) Read(conn net.Conn) (string, error) {
 	n, err := conn.Read(buffer)
 	if err != nil {
 		if err == io.EOF {
-			slog.Info("Client has disconnected", "client", conn.RemoteAddr().String())
+			slog.Info("Client has disconnected (EOF)", "client", conn.RemoteAddr().String())
 		} else {
 			slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
 		}
@@ -157,9 +156,15 @@ func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
 		return "", err
 	}
 
-	plainText := crypto.DecryptMessage(cipherText, server.privateKey)
-	if plainText == "" {
-		return "", errors.New("decryption: Failed to decrypt cipher text")
+	plainText, err := crypto.DecryptMessage(cipherText, server.privateKey)
+	if err != nil {
+		if err == arcaneErrors.ErrBase64DecodeFailed {
+			slog.Error("Failed to decrypt base64 encoded cipher text")
+		} else if err == arcaneErrors.ErrDecryptionFailed {
+			slog.Error("Failed to decrypt cipher text provided by the client")
+		}
+
+		return "", err
 	}
 
 	return plainText, nil
