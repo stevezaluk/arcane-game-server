@@ -4,8 +4,10 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 
 	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
@@ -33,8 +35,8 @@ func New() (KeyPair, error) {
 
 	ret.PrivateKey = privateKey
 	ret.PublicKey = privateKey.PublicKey
-
 	ret.PublicKeyPem = string(PublicKeyToPEM(ret.PublicKey))
+	ret.PublicKeyChecksum = PublicKeyToChecksum(ret.PublicKeyPem)
 
 	return ret, nil
 }
@@ -46,6 +48,13 @@ func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
 	publicKeyBytes := pem.EncodeToMemory(block)
 
 	return publicKeyBytes
+}
+
+func PublicKeyToChecksum(pemKey string) string {
+	hash := sha256.Sum256([]byte(pemKey))
+	hashStr := hex.EncodeToString(hash[:])
+
+	return hashStr
 }
 
 func DecryptMessage(message string, privateKey *rsa.PrivateKey) (string, error) {
