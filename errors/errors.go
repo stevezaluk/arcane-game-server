@@ -15,6 +15,7 @@ var ErrMaxConnectionsReached = errors.New("server: Cannot accept client connecti
 
 // Key Negotiation
 var ErrInvalidConnectResponse = errors.New("keyNeogtiation: Did not receive expected CONNECT request from client during key negotiation")
+var ErrInvalidKeyAcknowledgement = errors.New("keyNegotation: Did not receive expected key acknowledgement from client or server during key negotation")
 
 // Decryption
 var ErrKeyGenerationFailed = errors.New("crypto: Failed to generate keys for the server")
