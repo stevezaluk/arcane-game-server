@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,8 +21,7 @@ type GameServer struct {
 	MaxConnections  int
 	IsClosed        bool
 
-	privateKey *rsa.PrivateKey
-	publicKey  rsa.PublicKey
+	ServerKeyPair crypto.KeyPair
 
 	Logger *slog.Logger
 }
@@ -50,13 +48,12 @@ func (server *GameServer) initLogger() error {
 
 func (server *GameServer) initCrypto() error {
 	slog.Info("Generating RSA-4096 key pair...")
-	priv, err := crypto.GenerateKeyPair()
+	keyPair, err := crypto.New()
 	if err != nil {
 		return err
 	}
 
-	server.privateKey = &priv
-	server.publicKey = server.privateKey.PublicKey
+	server.ServerKeyPair = keyPair
 
 	return nil
 }
@@ -168,7 +165,7 @@ func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
 		return "", err
 	}
 
-	plainText, err := crypto.DecryptMessage(cipherText, server.privateKey)
+	plainText, err := crypto.DecryptMessage(cipherText, server.ServerKeyPair.PrivateKey)
 	if err != nil {
 		if err == arcaneErrors.ErrBase64DecodeFailed {
 			slog.Error("Failed to decrypt base64 encoded cipher text")
@@ -236,8 +233,7 @@ func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
 
 	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
 
-	pemEncodedKey := crypto.PublicKeyToPEM(server.publicKey)
-	keyResp := "PUBKEY:" + string(pemEncodedKey)
+	keyResp := "PUBKEY:" + server.ServerKeyPair.PublicKeyPem
 
 	slog.Info("Sending public key...")
 	wErr := server.Write(keyResp, conn)
