@@ -12,7 +12,6 @@ import (
 	"github.com/samber/slog-multi"
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
-	"github.com/stevezaluk/arcane-game-server/errors"
 	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
 )
 
@@ -200,11 +199,11 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 
 	err := server.NegotiateServerKey(conn)
 	if err != nil {
-		if err == errors.ErrReadBufferFailed {
+		if err == arcaneErrors.ErrReadBufferFailed {
 			slog.Error("Failed to read buffer while waiting for connect response")
-		} else if err == errors.ErrWriteBufferFailed {
+		} else if err == arcaneErrors.ErrWriteBufferFailed {
 			slog.Error("Failed to write public key to client")
-		} else if err == errors.ErrInvalidConnectResponse {
+		} else if err == arcaneErrors.ErrInvalidConnectResponse {
 			slog.Error("CONNECT Request not formatted properly", "client", conn.RemoteAddr().String())
 		}
 
@@ -228,11 +227,11 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
 	buffer, err := server.Read(conn)
 	if err != nil {
-		return errors.ErrReadBufferFailed
+		return arcaneErrors.ErrReadBufferFailed
 	}
 
 	if buffer != "CONNECT" {
-		return errors.ErrInvalidConnectResponse
+		return arcaneErrors.ErrInvalidConnectResponse
 	}
 
 	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
@@ -243,7 +242,7 @@ func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
 	slog.Info("Sending public key...")
 	wErr := server.Write(keyResp, conn)
 	if wErr != nil {
-		return errors.ErrWriteBufferFailed
+		return arcaneErrors.ErrWriteBufferFailed
 	}
 
 	return nil
