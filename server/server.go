@@ -198,7 +198,7 @@ func (server *GameServer) Write(message string, conn net.Conn) error {
 func (server *GameServer) HandleClient(conn net.Conn) {
 	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
 
-	err := server.NegotiateKeys(conn)
+	err := server.NegotiateServerKey(conn)
 	if err != nil {
 		if err == errors.ErrReadBufferFailed {
 			slog.Error("Failed to read buffer while waiting for connect response")
@@ -225,7 +225,7 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 	}
 }
 
-func (server *GameServer) NegotiateKeys(conn net.Conn) error {
+func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
 	buffer, err := server.Read(conn)
 	if err != nil {
 		return errors.ErrReadBufferFailed
