@@ -11,18 +11,32 @@ import (
 	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
 )
 
-func GenerateKeyPair() (rsa.PrivateKey, error) {
+type KeyPair struct {
+	PrivateKey        *rsa.PrivateKey
+	PublicKey         rsa.PublicKey
+	PublicKeyChecksum string
+	PublicKeyPem      string
+}
+
+func New() (KeyPair, error) {
+	var ret KeyPair
+
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return *privateKey, arcaneErrors.ErrKeyGenerationFailed
+		return ret, arcaneErrors.ErrKeyGenerationFailed
 	}
 
 	err = privateKey.Validate()
 	if err != nil {
-		return *privateKey, arcaneErrors.ErrKeysNotValid
+		return ret, arcaneErrors.ErrKeysNotValid
 	}
 
-	return *privateKey, nil
+	ret.PrivateKey = privateKey
+	ret.PublicKey = privateKey.PublicKey
+
+	ret.PublicKeyPem = string(PublicKeyToPEM(ret.PublicKey))
+
+	return ret, nil
 }
 
 func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
