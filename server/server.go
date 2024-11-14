@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/samber/slog-multi"
@@ -54,6 +55,7 @@ func (server *GameServer) initCrypto() error {
 	}
 
 	server.ServerKeyPair = keyPair
+	slog.Info("Key Pair", "key", server.ServerKeyPair.PublicKeyChecksum)
 
 	return nil
 }
@@ -209,6 +211,21 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 		return
 	}
 
+	slog.Info("Waiting for public key acknowledgement from client")
+
+	err = server.ValidateServerKey(conn)
+	if err != nil {
+		if err == arcaneErrors.ErrReadBufferFailed {
+			slog.Error("Failed to read buffer while waiting for key acknowledgement")
+		} else if err == arcaneErrors.ErrServerClientKeyMismatch {
+			slog.Error("Client responded with invalid public key checksum. Server and client key mismatch")
+		}
+
+		slog.Error("Server side key validation failed. Closing connection...")
+		server.CloseConnection(conn)
+		return
+	}
+
 	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
 	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
 	for {
@@ -239,6 +256,25 @@ func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
 	wErr := server.Write(keyResp, conn)
 	if wErr != nil {
 		return arcaneErrors.ErrWriteBufferFailed
+	}
+
+	return nil
+}
+
+func (server *GameServer) ValidateServerKey(conn net.Conn) error {
+	buffer, err := server.Read(conn)
+	if err != nil {
+		return arcaneErrors.ErrReadBufferFailed
+	}
+
+	if !strings.HasPrefix(buffer, "PUBKEY:ACK:") {
+		return arcaneErrors.ErrInvalidKeyAcknowledgement
+	}
+
+	clientChecksum := strings.Split(buffer, ":")[2]
+
+	if clientChecksum != server.ServerKeyPair.PublicKeyChecksum {
+		return arcaneErrors.ErrServerClientKeyMismatch
 	}
 
 	return nil
