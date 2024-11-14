@@ -41,6 +41,21 @@ func New() (KeyPair, error) {
 	return ret, nil
 }
 
+func FromPEM(pemKey string) (KeyPair, error) {
+	var ret KeyPair
+
+	publicKey, err := PEMToPublicKey(pemKey)
+	if err != nil {
+		return ret, err
+	}
+
+	ret.PublicKey = publicKey
+	ret.PublicKeyPem = pemKey
+	ret.PublicKeyChecksum = PublicKeyToChecksum(pemKey)
+
+	return ret, nil
+}
+
 func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
 	marshaledKey := x509.MarshalPKCS1PublicKey(&publicKey)
 	block := &pem.Block{Type: "RSA PUBLIC KEY", Bytes: marshaledKey}
