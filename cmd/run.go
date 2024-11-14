@@ -45,18 +45,6 @@ func init() {
 	runCmd.Flags().IntP("port", "p", 8080, "Set the host port that the server should listen on")
 	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 
-	runCmd.Flags().String("mongo.ip", "127.0.0.1", "Set the IP Address of your running MongoDB instance")
-	viper.BindPFlag("mongo.ip", runCmd.Flags().Lookup("mongo.ip"))
-
-	runCmd.Flags().Int("mongo.port", 27017, "Set the Port of your running MongoDB instance")
-	viper.BindPFlag("mongo.port", runCmd.Flags().Lookup("mongo.port"))
-
-	runCmd.Flags().String("mongo.user", "admin", "Set the username to use for authentication with MongoDB")
-	viper.BindPFlag("mongo.user", runCmd.Flags().Lookup("mongo.user"))
-
-	runCmd.Flags().String("mongo.pass", "admin", "Set the password to use for authentication with MongoDB")
-	viper.BindPFlag("mongo.pass", runCmd.Flags().Lookup("mongo.pass"))
-
 	runCmd.Flags().String("log.path", "/var/log/arcane", "Set the directory where log files are saved")
 	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log.path"))
 }
