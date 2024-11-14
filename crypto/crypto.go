@@ -50,6 +50,16 @@ func PublicKeyToPEM(publicKey rsa.PublicKey) []byte {
 	return publicKeyBytes
 }
 
+func PEMToPublicKey(pemKey string) (rsa.PublicKey, error) {
+	publicKeyBlock, _ := pem.Decode([]byte(pemKey))
+	pubKey, err := x509.ParsePKCS1PublicKey(publicKeyBlock.Bytes)
+	if err != nil {
+		return *pubKey, arcaneErrors.ErrParsePubKeyFailed
+	}
+
+	return *pubKey, nil
+}
+
 func PublicKeyToChecksum(pemKey string) string {
 	hash := sha256.Sum256([]byte(pemKey))
 	hashStr := hex.EncodeToString(hash[:])
