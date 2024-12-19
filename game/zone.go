@@ -12,4 +12,8 @@ const (
 type Zone struct {
 	ZoneId string
 	Cards  []*CardObject
+
+	IsPublic  bool
+	IsShared  bool
+	IsOrdered bool
 }
