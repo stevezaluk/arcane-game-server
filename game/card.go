@@ -21,18 +21,6 @@ type CardObject struct {
 }
 
 /*
-NewCardObject Create a new pointer to a card object. Its Metadata, Owner, and ParentZone are required
-*/
-func NewCardObject(metadata *card.CardSet, owner *user.User, zone *Zone) *CardObject {
-	return &CardObject{
-		Metadata:          metadata,
-		Owner:             owner,
-		ParentZone:        zone,
-		WasPlayedThisTurn: true,
-	}
-}
-
-/*
 TapCard Set IsTapped to true, and consider the card tapped out
 */
 func (card *CardObject) TapCard() {
@@ -47,5 +35,17 @@ UnTapCard Set IsTapped to false, and consider the card untapped
 func (card *CardObject) UnTapCard() {
 	if card.IsTapped {
 		card.IsTapped = false
+	}
+}
+
+/*
+NewCardObject Create a new pointer to a card object. Its Metadata, Owner, and ParentZone are required
+*/
+func NewCardObject(metadata *card.CardSet, owner *user.User, zone *Zone) *CardObject {
+	return &CardObject{
+		Metadata:          metadata,
+		Owner:             owner,
+		ParentZone:        zone,
+		WasPlayedThisTurn: true,
 	}
 }
