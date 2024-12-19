@@ -13,6 +13,7 @@ ownership, its parent zone, and the state of the card
 type CardObject struct {
 	Metadata   *card.CardSet
 	Owner      *user.User
+	Controller *user.User
 	ParentZone *Zone
 
 	IsTapped          bool
@@ -45,6 +46,7 @@ func NewCardObject(metadata *card.CardSet, owner *user.User, zone *Zone) *CardOb
 	return &CardObject{
 		Metadata:          metadata,
 		Owner:             owner,
+		Controller:        owner,
 		ParentZone:        zone,
 		WasPlayedThisTurn: true,
 	}
