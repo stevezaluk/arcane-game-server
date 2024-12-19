@@ -1,10 +1,9 @@
 package server
 
 import (
-	std_crypto "crypto"
-	"crypto/rsa"
-	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/samber/slog-multi"
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
+	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
 )
 
 type GameServer struct {
@@ -23,19 +23,18 @@ type GameServer struct {
 	MaxConnections  int
 	IsClosed        bool
 
-	privateKey *rsa.PrivateKey
-	publicKey  rsa.PublicKey
+	ServerKeyPair crypto.KeyPair
 
 	Logger *slog.Logger
 }
 
-func (server *GameServer) initLogger() {
+func (server *GameServer) initLogger() error {
 	timestamp := time.Now().Format(time.RFC3339Nano)
 
 	filename := viper.GetString("log.path") + "/arcane-" + timestamp + ".json"
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644) // this is not getting closed when the server stops
 	if err != nil {
-		panic(err)
+		return arcaneErrors.ErrLogFileFailed
 	}
 
 	multiHandler := slogmulti.Fanout(
@@ -45,33 +44,65 @@ func (server *GameServer) initLogger() {
 
 	server.Logger = slog.New(multiHandler)
 	slog.SetDefault(server.Logger)
+
+	return nil
 }
 
-func (server *GameServer) Init() {
-	server.initLogger()
-
+func (server *GameServer) initCrypto() error {
 	slog.Info("Generating RSA-4096 key pair...")
-	priv, _ := crypto.GenerateKeyPair()
-	server.privateKey = &priv
-	server.publicKey = server.privateKey.PublicKey
+	keyPair, err := crypto.New()
+	if err != nil {
+		return err
+	}
+
+	server.ServerKeyPair = keyPair
+	slog.Info("Key Pair", "key", server.ServerKeyPair.PublicKeyChecksum)
+
+	return nil
+}
+
+func (server *GameServer) Init() bool {
+	var status bool
+
+	logErr := server.initLogger()
+	if logErr != nil {
+		slog.Error("Failed to open log file for saving")
+		return status
+	}
+
+	cryptoErr := server.initCrypto()
+	if cryptoErr != nil {
+
+		if errors.Is(cryptoErr, arcaneErrors.ErrKeyGenerationFailed) {
+			slog.Error("Failed to generate RSA keys for server")
+		} else if errors.Is(cryptoErr, arcaneErrors.ErrKeysNotValid) {
+			slog.Error("Failed to validate the generated keys for the server")
+		}
+
+		return status
+	}
 
 	server.URI = "127.0.0.1:" + viper.GetString("port")
 	server.MaxConnections = 8
+
+	status = true
+	return status
 }
 
-func (server *GameServer) Listen() {
+func (server *GameServer) Listen() error {
 	slog.Info("Starting server...")
 	listen, err := net.Listen("tcp", server.URI)
 	if err != nil {
-		slog.Error("Failed to start listening for connections", "err", err.Error())
-		panic(err) // panicing here as this is a fatal error
+		return arcaneErrors.ErrServerStartFailed
 	}
 
 	slog.Info("Server listening for connections at", "uri", server.URI)
 	server.Listener = &listen
+
+	return nil
 }
 
-func (server *GameServer) AcceptConnections() {
+func (server *GameServer) WaitForConnections() {
 	for {
 		if server.ConnectionCount == server.MaxConnections {
 			server.IsClosed = true
@@ -80,81 +111,190 @@ func (server *GameServer) AcceptConnections() {
 		}
 
 		if !server.IsClosed {
-			sock := *server.Listener
-			conn, err := sock.Accept()
+			conn, err := server.AcceptConnection()
 			if err != nil {
-				slog.Error("Failed to accept connection from client ", "client", conn.RemoteAddr().String(), "err", err.Error())
-				panic(err)
+				continue
 			}
 
-			slog.Info("Accepted connection from client", "client", conn.RemoteAddr().String())
-			server.ConnectionCount += 1
-			go server.NegotiateKeys(conn)
+			go server.HandleClient(conn)
 		}
 	}
+}
+
+func (server *GameServer) AcceptConnection() (net.Conn, error) {
+	sock := *server.Listener
+
+	conn, err := sock.Accept()
+	if err != nil {
+		slog.Error("Failed to accept client connection", "client", conn.RemoteAddr().String())
+		conn.Close()
+		return nil, arcaneErrors.ErrAcceptConnectionFailed
+	}
+
+	slog.Info("Client has connected", "client", conn.RemoteAddr().String())
+	server.ConnectionCount += 1
+	return conn, nil
+}
+
+func (server *GameServer) CloseConnection(conn net.Conn) {
+	conn.Close()
+	server.ConnectionCount -= 1
+}
+
+func (server *GameServer) Read(conn net.Conn) (string, error) {
+	var ret string
+
+	buffer := make([]byte, 4096)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		if err == io.EOF {
+			slog.Info("Client has disconnected (EOF)", "client", conn.RemoteAddr().String())
+		} else {
+			slog.Error("Failed to read buffer from client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		}
+		return ret, err
+	}
+
+	ret = string(buffer[:n])
+
+	slog.Debug("Message from client", "msg", ret)
+	return ret, nil
+}
+
+func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
+
+	cipherText, err := server.Read(conn)
+	if err != nil {
+		return "", err
+	}
+
+	plainText, err := crypto.DecryptMessage(cipherText, server.ServerKeyPair.PrivateKey)
+	if err != nil {
+		if errors.Is(err, arcaneErrors.ErrBase64DecodeFailed) {
+			slog.Error("Failed to decrypt base64 encoded cipher text")
+		} else if errors.Is(err, arcaneErrors.ErrDecryptionFailed) {
+			slog.Error("Failed to decrypt cipher text provided by the client")
+		}
+
+		return "", err
+	}
+
+	return plainText, nil
+}
+
+func (server *GameServer) Write(message string, conn net.Conn) error {
+	buffer := []byte(message)
+
+	_, err := conn.Write(buffer)
+	if err != nil {
+		slog.Error("Failed to write buffer to client", "err", err.Error(), "client", conn.RemoteAddr().String())
+		return err
+	}
+
+	return nil
 }
 
 func (server *GameServer) HandleClient(conn net.Conn) {
-	slog.Info("Waiting for messages from client", "client", conn.RemoteAddr().String())
-	for {
-		buffer := make([]byte, 6000)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			continue
-		}
-
-		cipherText, err := base64.StdEncoding.WithPadding(base64.StdPadding).DecodeString(string(buffer[:n]))
-		if err != nil {
-			panic(err)
-		}
-
-		plainText, err := server.privateKey.Decrypt(nil, cipherText, &rsa.OAEPOptions{Hash: std_crypto.SHA256})
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println(string(plainText))
-	}
-}
-
-func (server *GameServer) NegotiateKeys(conn net.Conn) {
-	negotiationSuccess := false
-
 	slog.Info("Starting key negotiation with client", "client", conn.RemoteAddr().String())
-	buffer := make([]byte, 4096)
-	_, err := conn.Read(buffer)
+
+	err := server.NegotiateServerKey(conn)
 	if err != nil {
-		slog.Error("Failed to read buffer from client during key negotiation", "client", conn.RemoteAddr().String())
-		conn.Close()
+		if errors.Is(err, arcaneErrors.ErrReadBufferFailed) {
+			slog.Error("Failed to read buffer while waiting for connect response")
+		} else if errors.Is(err, arcaneErrors.ErrWriteBufferFailed) {
+			slog.Error("Failed to write public key to client")
+		} else if errors.Is(err, arcaneErrors.ErrInvalidConnectResponse) {
+			slog.Error("CONNECT Request not formatted properly", "client", conn.RemoteAddr().String())
+		}
+
+		slog.Error("Key negotiation failed for client. Closing connection...")
+		server.CloseConnection(conn)
 		return
 	}
 
-	bufferStr := string(buffer)
-	if strings.HasPrefix(bufferStr, "JOIN:") {
-		slog.Info("Received JOIN request from client", "client", conn.RemoteAddr().String())
-		keyResp := "PUBKEY:" + string(crypto.PublicKeyToPEM(server.publicKey))
-		_, err := conn.Write([]byte(keyResp))
-		if err != nil {
-			slog.Error("Failed to send key to client", "client", conn.RemoteAddr().String())
-			conn.Close()
-			return
+	slog.Info("Waiting for public key acknowledgement from client")
+
+	err = server.ValidateServerKey(conn)
+	if err != nil {
+		if errors.Is(err, arcaneErrors.ErrReadBufferFailed) {
+			slog.Error("Failed to read buffer while waiting for key acknowledgement")
+		} else if errors.Is(err, arcaneErrors.ErrServerClientKeyMismatch) {
+			slog.Error("Client responded with invalid public key checksum. Server and client key mismatch")
 		}
-		negotiationSuccess = true
+
+		slog.Error("Server side key validation failed. Closing connection...")
+		server.CloseConnection(conn)
+		return
 	}
 
-	if negotiationSuccess {
-		slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
-		server.HandleClient(conn)
-	} else {
-		conn.Close()
+	slog.Info("Key negotiation success for client", "client", conn.RemoteAddr().String())
+	slog.Info("Client OK. Waiting for JOIN request", "client", conn.RemoteAddr().String())
+	for {
+		plainText, err := server.ReadEncrypted(conn)
+		if err != nil {
+			server.CloseConnection(conn)
+			break
+		}
+		fmt.Println(plainText)
+	}
+}
+
+func (server *GameServer) NegotiateServerKey(conn net.Conn) error {
+	buffer, err := server.Read(conn)
+	if err != nil {
+		return arcaneErrors.ErrReadBufferFailed
 	}
 
+	if buffer != "CONNECT" {
+		return arcaneErrors.ErrInvalidConnectResponse
+	}
+
+	slog.Info("CONNECT Response acknowledeged. PEM encoding public key...", "client", conn.RemoteAddr().String())
+
+	keyResp := "PUBKEY:" + server.ServerKeyPair.PublicKeyPem
+
+	slog.Info("Sending public key...")
+	wErr := server.Write(keyResp, conn)
+	if wErr != nil {
+		return arcaneErrors.ErrWriteBufferFailed
+	}
+
+	return nil
+}
+
+func (server *GameServer) ValidateServerKey(conn net.Conn) error {
+	buffer, err := server.Read(conn)
+	if err != nil {
+		return arcaneErrors.ErrReadBufferFailed
+	}
+
+	if !strings.HasPrefix(buffer, "PUBKEY:ACK:") {
+		return arcaneErrors.ErrInvalidKeyAcknowledgement
+	}
+
+	clientChecksum := strings.Split(buffer, ":")[2]
+
+	if clientChecksum != server.ServerKeyPair.PublicKeyChecksum {
+		return arcaneErrors.ErrServerClientKeyMismatch
+	}
+
+	return nil
 }
 
 func (server *GameServer) Start() {
-	server.Init()
-	server.Listen()
-	server.AcceptConnections()
+	initErr := server.Init()
+	if !initErr {
+		slog.Error("Server initialization has failed")
+		panic(initErr)
+	}
+
+	listenErr := server.Listen()
+	if listenErr != nil {
+		slog.Error("Failed to start listening for connections", "err", listenErr.Error())
+		panic(listenErr)
+	}
+
+	server.WaitForConnections()
 }
 
 func (server *GameServer) Stop() {
