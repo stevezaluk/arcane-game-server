@@ -20,7 +20,6 @@ type GameServer struct {
 	URI             string
 	Listener        *net.Listener
 	ConnectionCount int
-	MaxConnections  int
 	IsClosed        bool
 
 	ServerKeyPair crypto.KeyPair
@@ -83,7 +82,6 @@ func (server *GameServer) Init() bool {
 	}
 
 	server.URI = "127.0.0.1:" + viper.GetString("port")
-	server.MaxConnections = 8
 
 	status = true
 	return status
@@ -104,7 +102,7 @@ func (server *GameServer) Listen() error {
 
 func (server *GameServer) WaitForConnections() {
 	for {
-		if server.ConnectionCount == server.MaxConnections {
+		if server.ConnectionCount == viper.GetInt("server.max_connections") {
 			server.IsClosed = true
 			slog.Warn("Server reached max connection count. No new connections are accepted")
 			break
