@@ -45,6 +45,6 @@ func init() {
 	runCmd.Flags().IntP("port", "p", 8080, "Set the host port that the server should listen on")
 	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 
-	runCmd.Flags().String("log.path", "/var/log/arcane", "Set the directory where log files are saved")
-	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log.path"))
+	runCmd.Flags().String("log-path", "/var/log/arcane", "Set the directory where log files are saved")
+	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log-path"))
 }
