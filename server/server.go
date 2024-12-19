@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -72,9 +73,9 @@ func (server *GameServer) Init() bool {
 	cryptoErr := server.initCrypto()
 	if cryptoErr != nil {
 
-		if cryptoErr == arcaneErrors.ErrKeyGenerationFailed {
+		if errors.Is(cryptoErr, arcaneErrors.ErrKeyGenerationFailed) {
 			slog.Error("Failed to generate RSA keys for server")
-		} else if cryptoErr == arcaneErrors.ErrKeysNotValid {
+		} else if errors.Is(cryptoErr, arcaneErrors.ErrKeysNotValid) {
 			slog.Error("Failed to validate the generated keys for the server")
 		}
 
@@ -169,9 +170,9 @@ func (server *GameServer) ReadEncrypted(conn net.Conn) (string, error) {
 
 	plainText, err := crypto.DecryptMessage(cipherText, server.ServerKeyPair.PrivateKey)
 	if err != nil {
-		if err == arcaneErrors.ErrBase64DecodeFailed {
+		if errors.Is(err, arcaneErrors.ErrBase64DecodeFailed) {
 			slog.Error("Failed to decrypt base64 encoded cipher text")
-		} else if err == arcaneErrors.ErrDecryptionFailed {
+		} else if errors.Is(err, arcaneErrors.ErrDecryptionFailed) {
 			slog.Error("Failed to decrypt cipher text provided by the client")
 		}
 
@@ -198,11 +199,11 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 
 	err := server.NegotiateServerKey(conn)
 	if err != nil {
-		if err == arcaneErrors.ErrReadBufferFailed {
+		if errors.Is(err, arcaneErrors.ErrReadBufferFailed) {
 			slog.Error("Failed to read buffer while waiting for connect response")
-		} else if err == arcaneErrors.ErrWriteBufferFailed {
+		} else if errors.Is(err, arcaneErrors.ErrWriteBufferFailed) {
 			slog.Error("Failed to write public key to client")
-		} else if err == arcaneErrors.ErrInvalidConnectResponse {
+		} else if errors.Is(err, arcaneErrors.ErrInvalidConnectResponse) {
 			slog.Error("CONNECT Request not formatted properly", "client", conn.RemoteAddr().String())
 		}
 
@@ -215,9 +216,9 @@ func (server *GameServer) HandleClient(conn net.Conn) {
 
 	err = server.ValidateServerKey(conn)
 	if err != nil {
-		if err == arcaneErrors.ErrReadBufferFailed {
+		if errors.Is(err, arcaneErrors.ErrReadBufferFailed) {
 			slog.Error("Failed to read buffer while waiting for key acknowledgement")
-		} else if err == arcaneErrors.ErrServerClientKeyMismatch {
+		} else if errors.Is(err, arcaneErrors.ErrServerClientKeyMismatch) {
 			slog.Error("Client responded with invalid public key checksum. Server and client key mismatch")
 		}
 
