@@ -31,3 +31,21 @@ func NewCardObject(metadata *card.CardSet, owner *user.User, zone *Zone) *CardOb
 		WasPlayedThisTurn: true,
 	}
 }
+
+/*
+TapCard Set IsTapped to true, and consider the card tapped out
+*/
+func (card *CardObject) TapCard() {
+	if !card.IsTapped {
+		card.IsTapped = true
+	}
+}
+
+/*
+UnTapCard Set IsTapped to false, and consider the card untapped
+*/
+func (card *CardObject) UnTapCard() {
+	if card.IsTapped {
+		card.IsTapped = false
+	}
+}
