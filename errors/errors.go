@@ -12,6 +12,7 @@ var ErrWriteBufferFailed = errors.New("server: Failed to write buffer to client"
 var ErrAcceptConnectionFailed = errors.New("server: Failed to accept client connection")
 var ErrCloseConnectionFailed = errors.New("server: Failed to close connect from client")
 var ErrMaxConnectionsReached = errors.New("server: Cannot accept client connection. Server is full")
+var ErrParsePubKeyFailed = errors.New("server: Failed to parse public key")
 
 // Key Negotiation
 var ErrInvalidConnectResponse = errors.New("keyNeogtiation: Did not receive expected CONNECT request from client during key negotiation")
