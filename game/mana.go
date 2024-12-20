@@ -17,3 +17,13 @@ type Mana struct {
 	Color string
 	Count int
 }
+
+/*
+NewMana Create a new mana object and return it
+*/
+func NewMana(color string, count int) Mana {
+	return Mana{
+		Color: color,
+		Count: count,
+	}
+}
