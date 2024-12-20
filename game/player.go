@@ -24,3 +24,27 @@ type Player struct {
 	IsMonarch   bool
 	IsGameOwner bool
 }
+
+func NewPlayer(playerId string, deckCode string, conn *net.Conn) (*Player, error) {
+	// get user for playerId
+	// get deck for deckCode
+
+	player := &Player{
+		Conn: conn,
+	}
+
+	graveyard, err := NewZone(GraveyardZoneId, player.User, true, false, true)
+	if err != nil {
+		return nil, err
+	}
+
+	hand, err := NewZone(HandZoneId, player.User, false, false, false)
+	if err != nil {
+		return nil, err
+	}
+
+	player.Hand = hand
+	player.Graveyard = graveyard
+
+	return player, nil
+}
