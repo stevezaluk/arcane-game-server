@@ -19,3 +19,24 @@ type Game struct {
 	Exile       *Zone
 	Command     *Zone
 }
+
+/*
+NewGame Initialize the zones of a new Game and return a pointer to it
+*/
+func NewGame(lobbyName string, gameMode string) (*Game, error) {
+	battlefield, _ := NewZone(BattlefieldZoneId, nil, true, true, false)
+	exile, _ := NewZone(ExileZoneId, nil, true, true, false)
+
+	var commandZone *Zone
+	if gameMode == CommanderGameMode {
+		commandZone, _ = NewZone(CommanderZoneId, nil, true, true, false)
+	}
+
+	return &Game{
+		Name:        lobbyName,
+		GameMode:    gameMode,
+		Battlefield: battlefield,
+		Exile:       exile,
+		Command:     commandZone,
+	}, nil
+}
