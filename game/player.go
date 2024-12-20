@@ -13,6 +13,8 @@ type Player struct {
 	Graveyard *Zone
 	Hand      *Zone
 
+	ManaPool []Mana
+
 	LifeTotal          int
 	CommanderDamage    int
 	PoisonCounters     int
