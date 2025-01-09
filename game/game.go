@@ -1,5 +1,9 @@
 package game
 
+import (
+	"github.com/stevezaluk/mtgjson-sdk-client/api"
+)
+
 const (
 	CommanderGameMode = "gamemode:commander"
 	ModernGameMode    = "gamemode:modern"
@@ -18,6 +22,7 @@ type Game struct {
 	Battlefield *Zone
 	Exile       *Zone
 	Command     *Zone
+	API         *api.MtgjsonApi
 }
 
 /*
@@ -38,5 +43,6 @@ func NewGame(lobbyName string, gameMode string) (*Game, error) {
 		Battlefield: battlefield,
 		Exile:       exile,
 		Command:     commandZone,
+		API:         api.New(),
 	}, nil
 }
