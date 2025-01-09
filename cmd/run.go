@@ -45,6 +45,21 @@ func init() {
 	runCmd.Flags().IntP("port", "p", 8080, "Set the host port that the server should listen on")
 	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 
+	runCmd.Flags().String("api.ip_address", "127.0.0.1", "The IP Address that the MTGJSON API is running on")
+	viper.BindPFlag("api.ip_address", runCmd.Flags().Lookup("api.ip_address"))
+
+	runCmd.Flags().Int("api.port", 8080, "The port that the MTGJSON API is running on")
+	viper.BindPFlag("api.port", runCmd.Flags().Lookup("api.port"))
+
+	runCmd.Flags().Bool("api.use_ssl", false, "Determine whether or not to use SSL when making API calls to MTGJSON API")
+	viper.BindPFlag("api.use_ssl", runCmd.Flags().Lookup("api.use_ssl"))
+
+	runCmd.Flags().String("api.email", "", "The email address that the game server should use for authenticating with the MTGJSON API")
+	viper.BindPFlag("api.email", runCmd.Flags().Lookup("api.email"))
+
+	runCmd.Flags().String("api.password", "", "The password that the game server should use for authenticating with the MTGJSON API")
+	viper.BindPFlag("api.password", runCmd.Flags().Lookup("api.password"))
+	
 	runCmd.Flags().IntP("server.max_connections", "m", 4, "Set the max number of connections for the game server")
 	viper.BindPFlag("server.max_connections", runCmd.Flags().Lookup("server.max_connections"))
 
