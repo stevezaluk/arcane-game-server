@@ -45,9 +45,9 @@ func init() {
 	runCmd.Flags().IntP("port", "p", 8080, "Set the host port that the server should listen on")
 	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 
-	runCmd.Flags().IntP("max-connections", "m", 4, "Set the max number of connections for the game server")
-	viper.BindPFlag("server.max_connections", runCmd.Flags().Lookup("max-connections"))
+	runCmd.Flags().IntP("server.max_connections", "m", 4, "Set the max number of connections for the game server")
+	viper.BindPFlag("server.max_connections", runCmd.Flags().Lookup("server.max_connections"))
 
-	runCmd.Flags().String("log-path", "/var/log/arcane", "Set the directory where log files are saved")
-	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log-path"))
+	runCmd.Flags().String("log.path", "/var/log/arcane", "Set the directory where log files are saved")
+	viper.BindPFlag("log.path", runCmd.Flags().Lookup("log.path"))
 }
