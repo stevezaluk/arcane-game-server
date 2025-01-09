@@ -3,17 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
-	"net"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/samber/slog-multi"
 	"github.com/spf13/viper"
 	"github.com/stevezaluk/arcane-game-server/crypto"
 	arcaneErrors "github.com/stevezaluk/arcane-game-server/errors"
+	"io"
+	"log/slog"
+	"net"
+	"strings"
 )
 
 type GameServer struct {
@@ -23,28 +19,6 @@ type GameServer struct {
 	IsClosed        bool
 
 	ServerKeyPair crypto.KeyPair
-
-	Logger *slog.Logger
-}
-
-func (server *GameServer) initLogger() error {
-	timestamp := time.Now().Format(time.RFC3339Nano)
-
-	filename := viper.GetString("log.path") + "/arcane-" + timestamp + ".json"
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644) // this is not getting closed when the server stops
-	if err != nil {
-		return arcaneErrors.ErrLogFileFailed
-	}
-
-	multiHandler := slogmulti.Fanout(
-		slog.NewJSONHandler(file, nil),
-		slog.NewTextHandler(os.Stdout, nil),
-	)
-
-	server.Logger = slog.New(multiHandler)
-	slog.SetDefault(server.Logger)
-
-	return nil
 }
 
 func (server *GameServer) initCrypto() error {
