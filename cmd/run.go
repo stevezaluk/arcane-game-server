@@ -17,6 +17,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/stevezaluk/arcane-game-server/config"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,6 +44,12 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
+	err := config.ReadConfigFile(cfgFile)
+	if err != nil {
+		fmt.Println("Failed to read config file: ", err)
+		os.Exit(1)
+	}
+
 	runCmd.Flags().IntP("port", "p", 8080, "Set the host port that the server should listen on")
 	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 
@@ -59,7 +67,7 @@ func init() {
 
 	runCmd.Flags().String("api.password", "", "The password that the game server should use for authenticating with the MTGJSON API")
 	viper.BindPFlag("api.password", runCmd.Flags().Lookup("api.password"))
-	
+
 	runCmd.Flags().IntP("server.max_connections", "m", 4, "Set the max number of connections for the game server")
 	viper.BindPFlag("server.max_connections", runCmd.Flags().Lookup("server.max_connections"))
 
