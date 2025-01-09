@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/stevezaluk/mtgjson-models/deck"
 	"github.com/stevezaluk/mtgjson-models/user"
 	"net"
 )
@@ -26,13 +25,11 @@ type Player struct {
 	IsGameOwner bool
 }
 
-func NewPlayer(user *user.User, deck *deck.Deck, conn *net.Conn) (*Player, error) {
-	deckObject := NewDeck(deck, user)
-
+func NewPlayer(user *user.User, deck *DeckObject, conn *net.Conn) (*Player, error) {
 	player := &Player{
 		User:    user,
 		Conn:    conn,
-		Library: deckObject,
+		Library: deck,
 	}
 
 	graveyard, err := NewZone(GraveyardZoneId, player.User, true, false, true)
