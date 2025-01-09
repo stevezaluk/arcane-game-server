@@ -63,12 +63,6 @@ func (server *GameServer) initCrypto() error {
 func (server *GameServer) Init() bool {
 	var status bool
 
-	logErr := server.initLogger()
-	if logErr != nil {
-		slog.Error("Failed to open log file for saving")
-		return status
-	}
-
 	cryptoErr := server.initCrypto()
 	if cryptoErr != nil {
 

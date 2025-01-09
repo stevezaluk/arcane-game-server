@@ -31,6 +31,13 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start the Game server",
 	Long:  ``,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		err := config.InitLogger()
+		if err != nil {
+			fmt.Println("Failed to initialize logger: ", err)
+			os.Exit(1)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Starting game server...")
 		serv.Start()
@@ -38,6 +45,12 @@ var runCmd = &cobra.Command{
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Println("[server - info] Stopping game server...")
 		serv.Stop()
+
+		fileObject := viper.Get("log.fileObject").(*os.File)
+		err := fileObject.Close()
+		if err != nil {
+			fmt.Println("Failed to close log file: ", err)
+		}
 	},
 }
 
