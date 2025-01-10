@@ -1,7 +1,10 @@
 package game
 
 import (
+	sdkErrors "github.com/stevezaluk/mtgjson-models/errors"
 	"github.com/stevezaluk/mtgjson-sdk-client/api"
+	"log/slog"
+	"net"
 )
 
 const (
@@ -45,4 +48,36 @@ func NewGame(lobbyName string, gameMode string) (*Game, error) {
 		Command:     commandZone,
 		API:         api.New(),
 	}, nil
+}
+
+/*
+AddPlayer Adds a player to the associated game object, and fetches there user data and deck metadata
+*/
+func (game *Game) AddPlayer(email string, deckCode string, conn *net.Conn) error {
+	user, err := game.API.User.GetUser(email)
+	if err != nil {
+		slog.Error("Error while requesting user data", "email", email, "err", err.Error())
+		return err
+	}
+
+	deck, err := game.API.Deck.GetDeck(deckCode, user.Email) // this might not properly validate user ownership here
+	if err != nil {
+		slog.Error("Error while requesting user deck", "email", email, "deckCode", deckCode, "err", err.Error())
+		return err
+	}
+
+	if deck.MtgjsonApiMeta.Owner != email || deck.MtgjsonApiMeta.Owner != "system" {
+		slog.Error("User does not have ownership of the requested deck", "email", email, "deckCode", deckCode)
+		return sdkErrors.ErrInvalidPermissions
+	}
+
+	player, err := NewPlayer(user, NewDeck(deck, user), conn)
+	if err != nil {
+		slog.Error("Error while creating deck object for player", "email", email, "deckCode", deckCode)
+		return err
+	}
+
+	game.Players = append(game.Players, player)
+
+	return nil
 }
