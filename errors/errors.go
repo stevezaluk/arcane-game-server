@@ -24,3 +24,6 @@ var ErrServerClientKeyMismatch = errors.New("crypto: Client key is different tha
 var ErrKeysNotValid = errors.New("crypto: The keys generated for the server are not valid")
 var ErrBase64DecodeFailed = errors.New("crypto: Failed to base64 decode encrypted message sent from client")
 var ErrDecryptionFailed = errors.New("crypto: Failed to decrypt message from client")
+
+// Zone
+var ErrZoneCannotBeShared = errors.New("zone: A zone cannot have an owner and be shared")
