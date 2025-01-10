@@ -265,5 +265,8 @@ func (server *GameServer) Start() {
 
 func (server *GameServer) Stop() {
 	sock := *server.Listener
-	sock.Close()
+	err := sock.Close()
+	if err != nil {
+		panic(err)
+	}
 }
